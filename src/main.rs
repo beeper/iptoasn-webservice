@@ -64,8 +64,10 @@ fn main() {
     let asns = get_asns(&db_url).expect("Unable to load the initial database");
     let asns_arc = Arc::new(RwLock::new(Arc::new(asns)));
     let asns_arc_copy = asns_arc.clone();
+
+    // Refresh the database daily
     thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(3600));
+        thread::sleep(Duration::from_secs(86400));
         update_asns(&asns_arc_copy, &db_url);
     });
     info!("Starting the webservice");

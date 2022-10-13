@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate horrorshow;
-#[macro_use]
 extern crate router;
 #[macro_use]
 extern crate clap;
@@ -59,6 +57,7 @@ fn main() {
                 .default_value("https://iptoasn.com/data/ip2asn-combined.tsv.gz"),
         )
         .get_matches();
+
     let db_url = matches.value_of("db_url").unwrap().to_owned();
     let listen_addr = matches.value_of("listen_addr").unwrap();
     let asns = get_asns(&db_url).expect("Unable to load the initial database");
@@ -70,6 +69,7 @@ fn main() {
         thread::sleep(Duration::from_secs(86400));
         update_asns(&asns_arc_copy, &db_url);
     });
+
     info!("Starting the webservice");
     WebService::start(asns_arc, listen_addr);
 }

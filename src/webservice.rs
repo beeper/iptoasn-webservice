@@ -1,6 +1,5 @@
 use crate::asns::*;
-use horrorshow::prelude::*;
-use iron::headers::{Accept, CacheControl, CacheDirective, Expires, HttpDate, Vary};
+use iron::headers::{CacheControl, CacheDirective, Expires, HttpDate, Vary};
 use iron::mime::*;
 use iron::modifiers::Header;
 use iron::prelude::*;
@@ -39,11 +38,6 @@ impl BeforeMiddleware for ASNsMiddleware {
     }
 }
 
-enum OutputType {
-    Json,
-    Html,
-}
-
 pub struct WebService;
 
 impl WebService {
@@ -62,28 +56,8 @@ impl WebService {
             Header(Expires(HttpDate(
                 time::now() + Duration::seconds(TTL.into()),
             ))),
-            "See https://iptoasn.com",
+            "Beep beep",
         )))
-    }
-
-    fn accept_type(req: &Request<'_, '_>) -> OutputType {
-        let mut output_type = OutputType::Json;
-        if let Some(header_accept) = req.headers.get::<Accept>() {
-            for header in header_accept.iter() {
-                match header.item {
-                    Mime(TopLevel::Text, SubLevel::Html, _) => {
-                        output_type = OutputType::Html;
-                        break;
-                    }
-                    Mime(_, SubLevel::Json, _) => {
-                        output_type = OutputType::Json;
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        output_type
     }
 
     fn output_json(
@@ -105,89 +79,6 @@ impl WebService {
             vary_header,
             json,
         )))
-    }
-
-    fn output_html(
-        map: &serde_json::Map<String, serde_json::value::Value>,
-        cache_headers: (Header<CacheControl>, Header<Expires>),
-        vary_header: Header<Vary>,
-    ) -> IronResult<Response> {
-        let mime_html = Mime(
-            TopLevel::Text,
-            SubLevel::Html,
-            vec![(Attr::Charset, Value::Utf8)],
-        );
-        let html = html!{
-            head {
-                title { : "iptoasn lookup" }
-                meta(name="viewport", content="width=device-widthinitial-scale=1");
-                link(rel="stylesheet", href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/css/bootstrap.min.css", integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi", crossorigin="anonymous");
-                style {
-                    : "body { margin: 1em 4em }"
-                }
-            }
-            body(class="container-fluid") {
-                header {
-                    h1 { : format_args!("Information for IP address: {}", map.get("ip").unwrap().as_str().unwrap()) }
-                }
-                table {
-                    tr {
-                        th { : "Announced" }
-                        td { : format_args!("{}", if map.get("announced")
-                            .unwrap().as_bool().unwrap() { "Yes" } else { "No" }) }
-                    }
-                    @ if map.get("announced").unwrap().as_bool().unwrap() {
-                        tr {
-                            th { : "First IP" }
-                            td { : format_args!("{}", map.get("first_ip")
-                                .unwrap().as_str().unwrap()) }
-                        }
-                        tr {
-                            th { : "Last IP" }
-                            td { : format_args!("{}", map.get("last_ip")
-                                .unwrap().as_str().unwrap()) }
-                        }
-                        tr {
-                            th { : "AS Number" }
-                            td { : format_args!("{}", map.get("as_number")
-                                .unwrap().as_u64().unwrap()) }
-                        }
-                        tr {
-                            th { : "AS Country code" }
-                            td { : format_args!("{}", map.get("as_country_code")
-                                .unwrap().as_str().unwrap()) }
-                        }
-                        tr {
-                            th { : "AS Description" }
-                            td { : format_args!("{}", map.get("as_description")
-                                .unwrap().as_str().unwrap()) }
-                        }
-                    }
-                }
-            }
-        }.into_string()
-            .unwrap();
-        let html = format!("<!DOCTYPE html>\n<html>{}</html>", html);
-        Ok(Response::with((
-            status::Ok,
-            mime_html,
-            cache_headers.0,
-            cache_headers.1,
-            vary_header,
-            html,
-        )))
-    }
-
-    fn output(
-        output_type: &OutputType,
-        map: &serde_json::Map<String, serde_json::value::Value>,
-        cache_headers: (Header<CacheControl>, Header<Expires>),
-        vary_header: Header<Vary>,
-    ) -> IronResult<Response> {
-        match *output_type {
-            OutputType::Json => Self::output_json(map, cache_headers, vary_header),
-            _ => Self::output_html(map, cache_headers, vary_header),
-        }
     }
 
     fn ip_lookup(req: &mut Request<'_, '_>) -> IronResult<Response> {
@@ -244,7 +135,7 @@ impl WebService {
                     "announced".to_string(),
                     serde_json::value::Value::Bool(false),
                 );
-                return Self::output(&Self::accept_type(req), &map, cache_headers, vary_header);
+                return Self::output_json(&map, cache_headers, vary_header);
             }
             Some(found) => found,
         };
@@ -272,7 +163,7 @@ impl WebService {
             "as_description".to_string(),
             serde_json::value::Value::String(found.description.clone()),
         );
-        Self::output(&Self::accept_type(req), &map, cache_headers, vary_header)
+        Self::output_json(&map, cache_headers, vary_header)
     }
 
     pub fn start(asns_arc: Arc<RwLock<Arc<ASNs>>>, listen_addr: &str) {

@@ -8,6 +8,7 @@ use std::io::prelude::*;
 use std::net::IpAddr;
 use std::ops::Bound::{Included, Unbounded};
 use std::str::FromStr;
+use log::{error, info};
 
 #[derive(Debug)]
 pub struct ASN {

@@ -13,6 +13,7 @@ use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use time::{self, Duration};
 use unicase::UniCase;
+use log::{warn};
 
 const TTL: u32 = 86_400;
 

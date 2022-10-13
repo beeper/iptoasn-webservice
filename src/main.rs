@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate horrorshow;
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate router;
 #[macro_use]
 extern crate clap;
+extern crate log;
+extern crate env_logger;
 
 mod asns;
 mod webservice;
@@ -16,6 +16,7 @@ use clap::Arg;
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
+use log::{info, warn};
 
 fn get_asns(db_url: &str) -> Result<ASNs, &'static str> {
     info!("Retrieving ASNs");
@@ -36,6 +37,8 @@ fn update_asns(asns_arc: &Arc<RwLock<Arc<ASNs>>>, db_url: &str) {
 }
 
 fn main() {
+    env_logger::init();
+
     let matches = app_from_crate!()
         .arg(
             Arg::new("listen_addr")
